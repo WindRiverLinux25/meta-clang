@@ -27,8 +27,8 @@ TUNE_CCARGS:remove = "-no-integrated-as"
 INHIBIT_DEFAULT_DEPS = "1"
 
 DEPENDS += "ninja-native libgcc"
-DEPENDS:append:class-target = " clang-cross-${TARGET_ARCH} virtual/${MLPREFIX}libc gcc-runtime"
-DEPENDS:append:class-nativesdk = " clang-native clang-crosssdk-${SDK_SYS} nativesdk-gcc-runtime"
+DEPENDS:append:class-target = " virtual/cross-c++ clang-cross-${TARGET_ARCH} virtual/${MLPREFIX}libc gcc-runtime"
+DEPENDS:append:class-nativesdk = " virtual/cross-c++ clang-native clang-crosssdk-${SDK_SYS} nativesdk-gcc-runtime"
 DEPENDS:append:class-native = " clang-native"
 
 # Trick clang.bbclass into not creating circular dependencies
@@ -66,14 +66,20 @@ EXTRA_OECMAKE += "-DCMAKE_BUILD_TYPE=RelWithDebInfo \
                   -DLLVM_ENABLE_RUNTIMES='compiler-rt' \
                   -DLLVM_LIBDIR_SUFFIX=${LLVM_LIBDIR_SUFFIX} \
                   -DLLVM_APPEND_VC_REV=OFF \
+                  -DCOMPILER_RT_DEFAULT_TARGET_ONLY=ON \
                   -S ${S}/runtimes \
 "
+
+EXTRA_OECMAKE:append:class-native = "\
+                  -DCOMPILER_RT_DEFAULT_TARGET_ARCH=${HOST_ARCH} \
+                  -DCMAKE_C_COMPILER_TARGET=${HOST_ARCH} \
+"
+
 EXTRA_OECMAKE:append:class-target = "\
                -DCMAKE_RANLIB=${STAGING_BINDIR_TOOLCHAIN}/${TARGET_PREFIX}llvm-ranlib \
                -DCMAKE_AR=${STAGING_BINDIR_TOOLCHAIN}/${TARGET_PREFIX}llvm-ar \
                -DCMAKE_NM=${STAGING_BINDIR_TOOLCHAIN}/${TARGET_PREFIX}llvm-nm \
                -DCMAKE_C_COMPILER_TARGET=${HOST_ARCH}${HOST_VENDOR}-${HOST_OS}${HF} \
-               -DCOMPILER_RT_DEFAULT_TARGET_ONLY=ON \
                -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
 "
 
@@ -84,7 +90,6 @@ EXTRA_OECMAKE:append:class-nativesdk = "\
                -DLLVM_TABLEGEN=${STAGING_BINDIR_NATIVE}/llvm-tblgen \
                -DCLANG_TABLEGEN=${STAGING_BINDIR_NATIVE}/clang-tblgen \
                -DCMAKE_C_COMPILER_TARGET=${HOST_ARCH}${HOST_VENDOR}-${HOST_OS}${HF} \
-               -DCOMPILER_RT_DEFAULT_TARGET_ONLY=ON \
 "
 EXTRA_OECMAKE:append:powerpc = " -DCOMPILER_RT_DEFAULT_TARGET_ARCH=powerpc "
 
@@ -107,15 +112,6 @@ FILES:${PN}-dev += "${datadir} ${nonarch_libdir}/clang/${MAJOR_VER}.${MINOR_VER}
 INSANE_SKIP:${PN} = "dev-so libdir"
 INSANE_SKIP:${PN}-dbg = "libdir"
 
-#PROVIDES:append:class-target = "\
-#        virtual/${MLPREFIX}compilerlibs \
-#        libgcc \
-#        libgcc-initial \
-#        libgcc-dev \
-#        libgcc-initial-dev \
-#        "
-#
-
 RDEPENDS:${PN}-dev += "${PN}-staticdev"
 
 BBCLASSEXTEND = "native nativesdk"
@@ -123,8 +119,4 @@ BBCLASSEXTEND = "native nativesdk"
 ALLOW_EMPTY:${PN} = "1"
 ALLOW_EMPTY:${PN}-dev = "1"
 
-TOOLCHAIN = "clang"
-# Overrides defaults from clang.bbclass
-TOOLCHAIN:class-nativesdk = "clang"
-TOOLCHAIN:class-native = "clang"
 SYSROOT_DIRS:append:class-target = " ${nonarch_libdir}"
