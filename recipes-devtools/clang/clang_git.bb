@@ -17,22 +17,12 @@ SECTION = "devel"
 require clang.inc
 require common-source.inc
 
-INHIBIT_DEFAULT_DEPS = "1"
-
-BUILD_CC:class-nativesdk = "clang"
-BUILD_CXX:class-nativesdk = "clang++"
-BUILD_AR:class-nativesdk = "llvm-ar"
-BUILD_RANLIB:class-nativesdk = "llvm-ranlib"
-BUILD_NM:class-nativesdk = "llvm-nm"
-
-BUILDSDK_CPPFLAGS:append:class-nativesdk = "${@oe.utils.vartrue('DEBUG_BUILD', ' -Wno-error=unused-command-line-argument', '', d)}"
-
-LDFLAGS:remove:class-nativesdk = "-fuse-ld=lld"
+INHIBIT_DEFAULT_DEPS:class-native = "1"
 
 LDFLAGS:append:class-target:riscv32 = " -Wl,--no-as-needed -latomic -Wl,--as-needed"
 LDFLAGS:append:class-target:mips = " -Wl,--no-as-needed -latomic -Wl,--as-needed"
 
-inherit cmake cmake-native pkgconfig python3native python3targetconfig
+inherit cmake pkgconfig python3native python3targetconfig
 
 OECMAKE_FIND_ROOT_PATH_MODE_PROGRAM = "BOTH"
 
@@ -63,7 +53,7 @@ PACKAGECONFIG_CLANG_COMMON = "build-id eh libedit rtti shared-libs \
                               ${@bb.utils.contains('TC_CXX_RUNTIME', 'llvm', 'compiler-rt libcplusplus libomp unwindlib', '', d)} \
                               "
 
-PACKAGECONFIG ??= "compiler-rt libcplusplus lldb-wchar terminfo \
+PACKAGECONFIG ??= "lldb-wchar terminfo \
                    ${PACKAGECONFIG_CLANG_COMMON} \
                    ${@bb.utils.filter('DISTRO_FEATURES', 'lto thin-lto', d)} \
                    "
@@ -119,7 +109,7 @@ LLVM_ENABLE_LIBEDIT;LLDB_ENABLE_LIBEDIT;LLDB_PYTHON_RELATIVE_PATH;LLDB_PYTHON_EX
 LLDB_PYTHON_EXT_SUFFIX;CMAKE_C_FLAGS_RELEASE;CMAKE_CXX_FLAGS_RELEASE;CMAKE_ASM_FLAGS_RELEASE;\
 CLANG_DEFAULT_CXX_STDLIB;CLANG_DEFAULT_RTLIB;CLANG_DEFAULT_UNWINDLIB;\
 CLANG_DEFAULT_OPENMP_RUNTIME;LLVM_ENABLE_PER_TARGET_RUNTIME_DIR;\
-LLVM_BUILD_TOOLS;LLVM_USE_HOST_TOOLS;LLVM_CONFIG_PATH;\
+LLVM_BUILD_TOOLS;LLVM_USE_HOST_TOOLS;LLVM_CONFIG_PATH;LLVM_EXTERNAL_SPIRV_HEADERS_SOURCE_DIR;\
 "
 #
 # Default to build all OE-Core supported target arches (user overridable).
@@ -136,7 +126,7 @@ HF[vardepvalue] = "${HF}"
 
 # Ensure that LLVM_PROJECTS does not contain compiler runtime components e.g. libcxx etc
 # they are enabled via LLVM_ENABLE_RUNTIMES
-LLVM_PROJECTS ?= "clang;clang-tools-extra;lld${LLDB}"
+LLVM_PROJECTS ?= "clang;clang-tools-extra;libclc;lld${LLDB}"
 LLDB ?= ";lldb"
 # LLDB support for RISCV32/Mips32 does not work yet
 LLDB:riscv32 = ""
@@ -165,7 +155,7 @@ EXTRA_OECMAKE += "-DLLVM_ENABLE_ASSERTIONS=OFF \
                   -DCMAKE_BUILD_TYPE=Release \
                   -DCMAKE_CXX_FLAGS_RELEASE='${CXXFLAGS} -DNDEBUG -g0' \
                   -DCMAKE_C_FLAGS_RELEASE='${CFLAGS} -DNDEBUG -g0' \
-                  -DBUILD_SHARED_LIBS=OFF \
+                  -DLLVM_EXTERNAL_SPIRV_HEADERS_SOURCE_DIR=${S}/llvm/projects/SPIRV-LLVM-Translator/SPIRV-Headers \
                   -DLLVM_ENABLE_PROJECTS='${LLVM_PROJECTS}' \
                   -DLLVM_BINUTILS_INCDIR=${STAGING_INCDIR} \
                   -DLLVM_VERSION_SUFFIX='${VER_SUFFIX}' \
@@ -181,6 +171,7 @@ EXTRA_OECMAKE:append:class-nativesdk = "\
                   -DCROSS_TOOLCHAIN_FLAGS_NATIVE='-DLLDB_PYTHON_RELATIVE_PATH=${PYTHON_SITEPACKAGES_DIR} \
                                                   -DLLDB_PYTHON_EXE_RELATIVE_PATH=${PYTHON_PN} \
                                                   -DLLDB_PYTHON_EXT_SUFFIX=${SOLIBSDEV} \
+                                                  -DLLVM_EXTERNAL_SPIRV_HEADERS_SOURCE_DIR=${S}/llvm/projects/SPIRV-LLVM-Translator/SPIRV-Headers \
                                                   -DCMAKE_TOOLCHAIN_FILE=${WORKDIR}/toolchain-native.cmake' \
                   -DCMAKE_RANLIB=${STAGING_BINDIR_TOOLCHAIN}/${TARGET_PREFIX}llvm-ranlib \
                   -DCMAKE_AR=${STAGING_BINDIR_TOOLCHAIN}/${TARGET_PREFIX}llvm-ar \
@@ -196,6 +187,8 @@ EXTRA_OECMAKE:append:class-nativesdk = "\
                   -DPYTHON_EXECUTABLE='${PYTHON}' \
 "
 EXTRA_OECMAKE:append:class-target = "\
+                  -DCROSS_TOOLCHAIN_FLAGS_NATIVE='-DLLVM_EXTERNAL_SPIRV_HEADERS_SOURCE_DIR=${S}/llvm/projects/SPIRV-LLVM-Translator/SPIRV-Headers \
+' \
                   -DLLVM_NATIVE_TOOL_DIR=${STAGING_BINDIR_NATIVE} \
                   -DLLVM_HEADERS_TABLEGEN=${STAGING_BINDIR_NATIVE}/llvm-min-tblgen \
                   -DCMAKE_RANLIB=${STAGING_BINDIR_TOOLCHAIN}/${TARGET_PREFIX}llvm-ranlib \
@@ -213,12 +206,12 @@ EXTRA_OECMAKE:append:class-target = "\
                   -DLLDB_PYTHON_EXT_SUFFIX=${SOLIBSDEV} \
 "
 
-DEPENDS = "binutils zlib zstd libffi libxml2 libxml2-native ninja-native swig-native"
+DEPENDS = "binutils zlib zstd libffi libxml2 libxml2-native ninja-native swig-native spirv-tools-native"
 DEPENDS:append:class-nativesdk = " clang-crosssdk-${SDK_SYS} virtual/nativesdk-cross-binutils nativesdk-python3"
-DEPENDS:append:class-target = " clang-cross-${TARGET_ARCH} python3 compiler-rt libcxx"
+DEPENDS:append:class-target = " clang-cross-${TARGET_ARCH} python3 ${@bb.utils.contains('TC_CXX_RUNTIME', 'llvm', 'compiler-rt libcxx', '', d)}"
 
 RRECOMMENDS:${PN} = "binutils"
-RRECOMMENDS:${PN}:append:class-target = " libcxx-dev"
+RRECOMMENDS:${PN}:append:class-target = "${@bb.utils.contains('TC_CXX_RUNTIME', 'llvm', ' libcxx-dev', '', d)}"
 
 # patch out build host paths for reproducibility
 reproducible_build_variables() {
@@ -282,6 +275,8 @@ do_install:append:class-native () {
     install -Dm 0755 ${B}${BINPATHPREFIX}/bin/clang-tblgen ${D}${bindir}/clang-tblgen
     install -Dm 0755 ${B}${BINPATHPREFIX}/bin/lldb-tblgen ${D}${bindir}/lldb-tblgen
     install -Dm 0755 ${B}${BINPATHPREFIX}/bin/llvm-min-tblgen ${D}${bindir}/llvm-min-tblgen
+    install -Dm 0755 ${B}${BINPATHPREFIX}/bin/prepare_builtins ${D}${bindir}/prepare_builtins
+
     for f in `find ${D}${bindir} -executable -type f -not -type l`; do
         test -n "`file -b $f|grep -i ELF`" && ${STRIP} $f
         echo "stripped $f"
@@ -315,8 +310,13 @@ do_install:append:class-nativesdk () {
     fi
 }
 
-PACKAGES =+ "${PN}-libllvm ${PN}-lldb-python ${PN}-libclang-cpp ${PN}-tidy ${PN}-format ${PN}-tools \
+PROVIDES:append:class-native = " libclc-native spirv-llvm-translator-native"
+PROVIDES:append:class-target = " libclc spirv-llvm-translator"
+PROVIDES:append:class-nativesdk = " nativesdk-libclc nativesdk-spirv-llvm-translator"
+
+PACKAGES =+ "${PN}-libllvm ${PN}-lldb-python ${PN}-libclang-cpp ${PN}-tidy ${PN}-format ${PN}-tools ${PN}-clc ${PN}-spirv \
              libclang lldb lldb-server liblldb llvm-linker-tools"
+
 
 BBCLASSEXTEND = "native nativesdk"
 
@@ -400,6 +400,13 @@ FILES:${PN} += "\
   ${nonarch_libdir}/${BPN}/*/include/ \
 "
 
+FILES:${PN}-clc += "${datadir}/clc"
+
+FILES:${PN}-spirv = " \
+    ${bindir}/llvm-spirv \
+    ${libdir}/libLLVMSPIRV.so.* \
+"
+
 FILES:lldb = "\
   ${bindir}/lldb \
   ${bindir}/lldb-argdumper \
@@ -440,25 +447,26 @@ FILES:${PN}-staticdev:remove = "${libdir}/${BPN}/*.a"
 FILES:${PN}-dev:remove = "${libdir}/${BPN}/*.la"
 FILES:${PN}:remove = "${libdir}/${BPN}/*"
 
-
 INSANE_SKIP:${PN} += "already-stripped"
 #INSANE_SKIP:${PN}-dev += "dev-elf"
 INSANE_SKIP:${PN}-lldb-python += "dev-so dev-deps"
 INSANE_SKIP:${MLPREFIX}liblldb = "dev-so"
 INSANE_SKIP:${PN}-libllvm = "dev-so"
 
+# SPIRV-LLVM-Translator provides only static libraries, they are included into
+# the clang-spirv package.
+INSANE_SKIP:${PN}-spirv += "dev-so"
+
 #Avoid SSTATE_SCAN_COMMAND running sed over llvm-config.
 SSTATE_SCAN_FILES:remove = "*-config"
 
-TOOLCHAIN = "clang"
-TOOLCHAIN:class-native = "gcc"
-TOOLCHAIN:class-nativesdk = "clang"
 COMPILER_RT:class-nativesdk:toolchain-clang:runtime-llvm = "-rtlib=libgcc --unwindlib=libgcc"
 LIBCPLUSPLUS:class-nativesdk:toolchain-clang:runtime-llvm = "-stdlib=libstdc++"
 
 SYSROOT_DIRS:append:class-target = " ${nonarch_libdir}"
 
 SYSROOT_PREPROCESS_FUNCS:append:class-target = " clang_sysroot_preprocess"
+SYSROOT_PREPROCESS_FUNCS:append:class-nativesdk = " clang_sysroot_preprocess"
 
 clang_sysroot_preprocess() {
 	install -d ${SYSROOT_DESTDIR}${bindir_crossscripts}/
