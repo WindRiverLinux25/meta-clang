@@ -56,6 +56,7 @@ SRC_URI = "\
     file://0035-compiler-rt-Do-not-pass-target-to-clang-compiler.patch \
     file://0036-Fix-build-on-ppc64-musl.patch \
     file://0037-clangd-Add-a-build-option-to-disable-building-dexp.patch \
+    file://0038-compiler-rt-Exclude-sync_fetch_and_-for-any-pre-ARMv.patch \
 "
 # Fallback to no-PIE if not set
 GCCPIE ??= ""
