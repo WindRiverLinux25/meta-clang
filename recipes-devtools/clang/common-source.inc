@@ -2,7 +2,10 @@ do_fetch() {
         :
 }
 do_fetch[noexec] = "1"
-deltask do_unpack
+do_unpack() {
+        :
+}
+do_unpack[noexec] = "1"
 deltask do_patch
 
 SRC_URI = ""
