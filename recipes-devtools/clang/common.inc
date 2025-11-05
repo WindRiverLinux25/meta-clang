@@ -15,7 +15,7 @@ LICENSE = "Apache-2.0-with-LLVM-exception"
 RELEASE ?= "${PV}"
 BASEURI ?= "${LLVM_HTTP}/llvm-project/releases/download/llvmorg-${PV}/llvm-project-${PV}.src.tar.xz"
 SOURCEDIR ?= "llvm-project-${PV}.src"
-SRC_URI[sha256sum] = "f0a4a240aabc9b056142d14d5478bb6d962aeac549cbd75b809f5499240a8b38"
+SRC_URI[sha256sum] = "6898f963c8e938981e6c4a302e83ec5beb4630147c7311183cf61069af16333d"
 
 SRC_URI = "\
     ${BASEURI} \
@@ -54,7 +54,6 @@ SRC_URI = "\
     file://0033-llvm-Add-libunwind.pc.in-and-llvm-config-scripts.patch \
     file://0034-scan-build-py-respect-LLVM_LIBDIR_SUFFIX-like-other-.patch \
     file://0035-compiler-rt-Do-not-pass-target-to-clang-compiler.patch \
-    file://0036-Fix-build-on-ppc64-musl.patch \
     file://0037-clangd-Add-a-build-option-to-disable-building-dexp.patch \
     file://0038-compiler-rt-Exclude-sync_fetch_and_-for-any-pre-ARMv.patch \
 "
